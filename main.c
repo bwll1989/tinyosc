@@ -13,14 +13,19 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-
+#ifdef _WIN32
+#include <WinSock2.h>
+#include <WS2tcpip.h>
+#else
 #include <arpa/inet.h>
 #include <sys/select.h>
+#include <unistd.h>
+#endif
+
 #include <fcntl.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <unistd.h>
 
 #include "tinyosc.h"
 
@@ -35,6 +40,15 @@ static void sigintHandler(int x) {
  * A basic program to listen to port 9000 and print received OSC packets.
  */
 int main(int argc, char *argv[]) {
+
+#ifdef _WIN32
+    WSADATA wsaData;
+    int result = WSAStartup(MAKEWORD(2,2), &wsaData);
+    if (result != 0) {
+        printf("WSAStartup failed: %d\n", result);
+        return 1;  // Return immediately if WSAStartup fails
+    }
+#endif
 
   char buffer[2048]; // declare a 2Kb buffer to read packet data into
 
@@ -51,7 +65,15 @@ int main(int argc, char *argv[]) {
 
   // open a socket to listen for datagrams (i.e. UDP packets) on port 9000
   const int fd = socket(AF_INET, SOCK_DGRAM, 0);
-  fcntl(fd, F_SETFL, O_NONBLOCK); // set the socket to non-blocking
+
+  // set the socket to non-blocking
+#ifndef _WIN32
+  fcntl(fd, F_SETFL, O_NONBLOCK); 
+#else
+  u_long mode = 1; // non blocking
+  ioctlsocket(fd, FIONBIO, &mode);
+#endif
+
   struct sockaddr_in sin;
   sin.sin_family = AF_INET;
   sin.sin_port = htons(9000);
@@ -88,7 +110,12 @@ int main(int argc, char *argv[]) {
   }
 
   // close the UDP socket
+#ifdef _WIN32
+  closesocket(fd);
+  WSACleanup();
+#else
   close(fd);
+#endif
 
   return 0;
 }
