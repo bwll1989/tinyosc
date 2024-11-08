@@ -21,6 +21,22 @@
 #if _WIN32
 #include <Winsock2.h>
 #define tosc_strncpy(_dst, _src, _len) strncpy_s(_dst, _len, _src, _TRUNCATE)
+unsigned long long htonll(unsigned long long val) {
+  //little endian check
+  if(htonl(1) == 1) {
+    return val;
+  } else {
+    return ((unsigned long long)htonl((unsigned int)(val & 0xFFFFFFFF)) << 32) | htonl((unsigned int)(val >> 32));
+  }
+}
+unsigned long long ntohll(unsigned long long val) {
+  //little endian check
+  if(ntohl(1) == 1) {
+    return val;
+  } else {
+    return ((unsigned long long)ntohl((unsigned int)(val & 0xFFFFFFFF)) << 32) | ntohl((unsigned int)(val >> 32));
+  }
+}
 #else
 #include <netinet/in.h>
 #define tosc_strncpy(_dst, _src, _len) strncpy(_dst, _src, _len)
